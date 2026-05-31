@@ -100,6 +100,28 @@ main { position: relative; z-index: 3; }
 .lang button.on { color: var(--text); }
 .lang .div { width: 1px; height: 12px; background: var(--faint); }
 
+/* — Keyboard focus polish — */
+:focus { outline: none; }
+:focus-visible { outline: 1px solid var(--accent); outline-offset: 4px; border-radius: 2px; }
+
+/* — Scroll progress (accent earns a structural job) — */
+.progress {
+  position: fixed; top: 0; left: 0; height: 2px; width: 0%;
+  background: var(--accent); opacity: 0.55; z-index: 60;
+  transition: width .12s linear;
+}
+
+/* — Oversized ghosted numeral: the editorial anchor for each movement — */
+.bignum {
+  position: absolute; top: clamp(48px, 13vh, 130px);
+  left: clamp(-6px, 1.5vw, 28px);
+  font-size: clamp(7rem, 19vw, 17rem); line-height: 0.78;
+  font-style: italic; font-weight: 400; letter-spacing: -0.04em;
+  color: var(--accent); opacity: 0.06; pointer-events: none;
+  user-select: none; z-index: 0;
+}
+.exp .bignum { left: clamp(8px, 4vw, 64px); }
+
 /* — Section scaffold — */
 section {
   position: relative;
@@ -108,10 +130,17 @@ section {
   padding: var(--s10) clamp(24px, 8vw, 140px);
   max-width: 1180px; margin-inline: auto;
 }
+section > *:not(.bignum) { position: relative; z-index: 1; }
 .label {
+  position: relative; padding-top: var(--s5);
   font-size: var(--label); letter-spacing: 0.32em; text-transform: uppercase;
   color: var(--dim); margin-bottom: var(--s6); font-weight: 500;
 }
+.label::before {
+  content: ''; position: absolute; top: 0; left: 0;
+  width: 46px; height: 1px; background: var(--accent); opacity: 0.5;
+}
+.exp .label::before { left: 50%; transform: translateX(-50%); }
 .label .n { color: var(--accent); opacity: 0.7; }
 
 /* — Reveal-on-scroll (motion-principles: IntersectionObserver) — */
@@ -122,6 +151,9 @@ section {
 .reveal.in { opacity: 1; transform: translateY(0); }
 .reveal.d1{transition-delay:.12s} .reveal.d2{transition-delay:.24s}
 .reveal.d3{transition-delay:.36s} .reveal.d4{transition-delay:.48s} .reveal.d5{transition-delay:.6s}
+/* a distinct entrance reserved for the payoff lines */
+.reveal.pop { transform: translateY(22px) scale(0.965); transition: opacity 1.2s var(--ease-out), transform 1.2s var(--ease-soft); }
+.reveal.pop.in { transform: translateY(0) scale(1); }
 
 /* ===========================================================================
    HERO
@@ -226,6 +258,11 @@ section {
 }
 .breath-btn:hover, .ghost-btn:hover { border-color: var(--muted); background: rgba(255,255,255,0.03); transform: translateY(-2px); }
 .breath-btn:active, .ghost-btn:active { transform: translateY(0) scale(0.98); }
+/* replay / continue controls — appear after a completed breath */
+.breath-after { display: none; gap: var(--s5); opacity: 0; transition: opacity .7s var(--ease-out); }
+.breath-after.show { display: flex; opacity: 1; }
+.ghost-btn.quiet { border-color: transparent; color: var(--muted); padding: 12px 20px; }
+.ghost-btn.quiet:hover { border-color: var(--dim); color: var(--text); }
 
 /* ===========================================================================
    EXPERIMENT III — the well
@@ -255,7 +292,7 @@ section {
 /* ===========================================================================
    PRINCIPLE
    =========================================================================== */
-#principle { align-items: flex-start; }
+#principle { align-items: flex-start; justify-content: flex-end; padding-bottom: var(--s10); }
 .principle-line { font-size: var(--h1); line-height: 1.25; letter-spacing: -0.01em; max-width: 18ch; margin-bottom: var(--s5); }
 .principle-line.small { font-size: var(--h2); color: var(--muted); }
 .principle-line em { font-style: italic; color: var(--accent); }
@@ -273,10 +310,10 @@ section {
 .ehi-small { font-size: var(--lead); font-style: italic; letter-spacing: 0.04em; margin: var(--s7) 0 var(--s8); }
 .seal { font-size: var(--label); letter-spacing: 0.34em; text-transform: uppercase; color: var(--dim); }
 .next {
-  margin-top: var(--s8); display: inline-flex; gap: var(--s4); align-items: center;
-  font-size: var(--label); letter-spacing: 0.24em; text-transform: uppercase; color: var(--dim);
+  margin-top: var(--s8); display: inline-flex; gap: var(--s3); align-items: center;
+  font-size: var(--label); letter-spacing: 0.24em; text-transform: uppercase; color: var(--faint);
 }
-.next .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); opacity: 0.6; }
+.next .dot { width: 4px; height: 4px; border-radius: 50%; background: var(--faint); }
 
 footer { text-align: center; padding: var(--s8) 0 var(--s9); color: var(--faint); font-size: var(--label); letter-spacing: 0.2em; }
 
@@ -288,6 +325,8 @@ footer { text-align: center; padding: var(--s8) 0 var(--s9); color: var(--faint)
   .grain { animation: none; }
   .ehi .char, .gloss, .tagline, .scrollcue { animation: none; opacity: 1; transform: none; filter: none; }
   .breath-dot.run { animation: none; transform: scale(1.1); }
+  .reveal.pop { transform: translateY(22px); }
+  .reveal.pop.in { transform: none; }
 }
 </style>
 </head>
@@ -297,6 +336,7 @@ footer { text-align: center; padding: var(--s8) 0 var(--s9); color: var(--faint)
 <canvas class="starfield" id="stars"></canvas>
 <div class="grain"></div>
 <div class="vignette"></div>
+<div class="progress" id="progress"></div>
 
 <div class="lang">
   <button id="btn-en" class="on">EN</button>
@@ -317,6 +357,7 @@ footer { text-align: center; padding: var(--s8) 0 var(--s9); color: var(--faint)
 
   <!-- ======================== I. INVITATION ======================== -->
   <section id="invite" class="prose">
+    <div class="bignum" aria-hidden="true">I</div>
     <div class="label reveal"><span class="n">I.</span> &nbsp; <span data-i="lab1">The invitation</span></div>
     <p class="reveal d1" data-i="inv1">Most teachings ask you to believe them.</p>
     <p class="reveal d2" data-i="inv2">This one asks the opposite.</p>
@@ -336,6 +377,7 @@ footer { text-align: center; padding: var(--s8) 0 var(--s9); color: var(--faint)
 
   <!-- ===================== EXPERIMENT I — GREYS ===================== -->
   <section id="exp1" class="exp prose">
+    <div class="bignum" aria-hidden="true">II</div>
     <div class="label reveal"><span class="n">II.</span> &nbsp; <span data-i="lab2">The first looking</span></div>
     <p class="big reveal d1" data-i="g1">These two squares. The left one is darker than the right.</p>
     <p class="muted reveal d2" data-i="g2">You could take my word for it.</p>
@@ -354,6 +396,7 @@ footer { text-align: center; padding: var(--s8) 0 var(--s9); color: var(--faint)
 
   <!-- ===================== EXPERIMENT II — BREATH ===================== -->
   <section id="exp2" class="exp prose">
+    <div class="bignum" aria-hidden="true">III</div>
     <div class="label reveal"><span class="n">III.</span> &nbsp; <span data-i="lab3">The second looking</span></div>
     <p class="big reveal d1" data-i="b1">I say your attention is yours to place. Don't believe that either.</p>
     <p class="muted reveal d2" data-i="b2">Press, and rest your attention on this — for one breath.</p>
@@ -364,6 +407,10 @@ footer { text-align: center; padding: var(--s8) 0 var(--s9); color: var(--faint)
         <span class="breath-word" id="breathWord"></span>
       </div>
       <button class="breath-btn" id="breathBtn" data-i="b3">Begin</button>
+      <div class="breath-after" id="breathAfter">
+        <button class="ghost-btn" id="breathAgain" data-i="bAgain">Again</button>
+        <button class="ghost-btn quiet" id="breathReady" data-i="bReady">I'm ready</button>
+      </div>
     </div>
 
     <div class="exp-reveal" id="breathReveal">
@@ -374,6 +421,7 @@ footer { text-align: center; padding: var(--s8) 0 var(--s9); color: var(--faint)
 
   <!-- ===================== EXPERIMENT III — WELL ===================== -->
   <section id="exp3" class="exp prose">
+    <div class="bignum" aria-hidden="true">IV</div>
     <div class="label reveal"><span class="n">IV.</span> &nbsp; <span data-i="lab4">The third looking</span></div>
     <p class="reveal d1" data-i="w1">There is a woman the village speaks of in low voices. They say she had something to do with a death, years ago.</p>
     <p class="big reveal d2" data-i="w2">You have been told. Now — <em>look.</em></p>
@@ -442,10 +490,11 @@ footer { text-align: center; padding: var(--s8) 0 var(--s9); color: var(--faint)
 
   <!-- ========================= PRINCIPLE ========================= -->
   <section id="principle">
+    <div class="bignum" aria-hidden="true">V</div>
     <div class="label reveal"><span class="n">V.</span> &nbsp; <span data-i="lab5">What the three lookings teach</span></div>
-    <div class="principle-line reveal d1" data-i="p1">Looking gives you what looking can give you.</div>
-    <div class="principle-line small reveal d2" data-i="p2">No more. No less.</div>
-    <div class="principle-line reveal d3" data-i="p3">Knowing the difference — <em>that</em> is the whole of the practice.</div>
+    <div class="principle-line reveal pop d1" data-i="p1">Looking gives you what looking can give you.</div>
+    <div class="principle-line small reveal pop d2" data-i="p2">No more. No less.</div>
+    <div class="principle-line reveal pop d3" data-i="p3">Knowing the difference — <em>that</em> is the whole of the practice.</div>
   </section>
 
   <!-- =========================== CLOSE =========================== -->
@@ -498,6 +547,7 @@ const I18N = {
   b4: { en: "Did it stay? Did it wander?", zh: "它留住了嗎？還是飄走了？" },
   b5: { en: "Either way — you just watched your own attention. No one could have told you what you found.", zh: "無論如何 —— 你剛剛看著自己的注意力。沒有人能替你說出你所發現的。" },
   bIn: { en: "in", zh: "吸" }, bHold: { en: "hold", zh: "屏" }, bOut: { en: "out", zh: "吐" }, bDone: { en: "—", zh: "—" },
+  bAgain: { en: "Again", zh: "再一次" }, bReady: { en: "I'm ready", zh: "我準備好了" },
 
   lab4: { en: "The third looking", zh: "第三次的看" },
   w1: { en: "There is a woman the village speaks of in low voices. They say she had something to do with a death, years ago.", zh: "村裡的人提起一個女人時，總壓低了聲音。他們說，多年前一樁死亡與她有關。" },
@@ -632,22 +682,44 @@ document.querySelectorAll('.reveal').forEach(el => io.observe(el));
   const dot = document.getElementById('breathDot');
   const word = document.getElementById('breathWord');
   const reveal = document.getElementById('breathReveal');
-  let running = false;
-  btn.addEventListener('click', () => {
-    if (running) return; running = true;
-    btn.style.opacity = '0.3'; btn.style.pointerEvents = 'none';
-    const w = (k) => { word.innerHTML = I18N[k][state.lang]; word.classList.add('show'); };
+  const after = document.getElementById('breathAfter');
+  const again = document.getElementById('breathAgain');
+  const ready = document.getElementById('breathReady');
+  let running = false, locked = false, timers = [];
+
+  const clearTimers = () => { timers.forEach(clearTimeout); timers = []; };
+  const at = (fn, ms) => timers.push(setTimeout(fn, ms));
+  const w = (k) => { word.innerHTML = I18N[k][state.lang]; word.classList.add('show'); };
+
+  function runCycle() {
+    if (running || locked) return;
+    running = true;
+    clearTimers();
+    btn.style.display = 'none';
+    after.classList.remove('show');
+
     if (REDUCED) {
       w('bIn');
-      setTimeout(() => { reveal.classList.add('show'); }, 1200);
+      at(() => { running = false; word.classList.remove('show'); after.classList.add('show'); }, 1400);
       return;
     }
-    dot.classList.add('run');
+    // restart the breathe animation cleanly each time
+    dot.classList.remove('run'); void dot.offsetWidth; dot.classList.add('run');
     w('bIn');
-    setTimeout(() => w('bHold'), 4000);
-    setTimeout(() => w('bOut'), 5000);
-    setTimeout(() => { word.classList.remove('show'); }, 9800);
-    setTimeout(() => { reveal.classList.add('show'); }, 10400);
+    at(() => w('bHold'), 4000);
+    at(() => w('bOut'), 5000);
+    at(() => word.classList.remove('show'), 9600);
+    at(() => { running = false; after.classList.add('show'); }, 10200);
+  }
+
+  btn.addEventListener('click', runCycle);
+  again.addEventListener('click', () => { if (running) return; after.classList.remove('show'); runCycle(); });
+  ready.addEventListener('click', () => {
+    if (running) return;
+    locked = true;
+    after.classList.remove('show');
+    after.style.display = 'none';
+    reveal.classList.add('show');
   });
 })();
 
@@ -801,6 +873,18 @@ document.querySelectorAll('.reveal').forEach(el => io.observe(el));
 
 /* init language strings (default EN already in DOM, but normalize the field + any em markup) */
 applyLang();
+
+/* — Scroll progress bar — */
+(function progress() {
+  const bar = document.getElementById('progress');
+  function update() {
+    const h = document.body.scrollHeight - window.innerHeight;
+    bar.style.width = (h > 0 ? (window.scrollY / h) * 100 : 0) + '%';
+  }
+  window.addEventListener('scroll', update, { passive: true });
+  window.addEventListener('resize', update);
+  update();
+})();
 </script>
 </body>
 </html>
